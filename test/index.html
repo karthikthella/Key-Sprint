@@ -1,0 +1,253 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <title>Typing Race Test</title>
+  <style>
+    body { font-family: Arial, sans-serif; padding: 20px; }
+    #passage { border: 1px solid #ccc; padding: 10px; margin: 10px 0; white-space: pre-wrap; line-height: 1.5; }
+    #inputArea { width: 100%; height: 80px; font-size: 16px; }
+    #leaderboard { margin-top: 20px; }
+    .winner { font-weight: bold; color: green; }
+    .correct { color: green; }
+    .incorrect { color: red; }
+    #progressBar { width: 100%; height: 20px; background: #eee; margin-top: 10px; }
+    #progress { height: 100%; width: 0%; background: #4caf50; }
+  </style>
+</head>
+<body>
+  <h1>Typing Race Test</h1>
+
+  <div>
+    <label>Username: <input id="username" /></label>
+  </div>
+  <div>
+    <button id="createRoom">Create Room</button>
+    <input id="joinRoomId" placeholder="Enter Room ID to Join"/>
+    <button id="joinRoom">Join Room</button>
+    <button id="playBots">Play with Bots</button>
+  </div>
+
+  <div id="roomInfo" style="display:none;">
+    <h3>Room: <span id="roomIdDisplay"></span></h3>
+    <div id="waitingMsg">Waiting for players...</div>
+    <button id="startRace" style="display:none;">Start Race (Host Only)</button>
+  </div>
+
+  <div id="countdown" style="font-size: 24px; margin-top: 10px;"></div>
+
+  <div id="gameArea" style="display:none;">
+    <div id="passage"></div>
+    <div id="progressBar"><div id="progress"></div></div>
+    <textarea id="inputArea" disabled></textarea>
+    <div>WPM: <span id="wpm">0</span> | Accuracy: <span id="accuracy">100</span>%</div>
+  </div>
+
+  <div id="leaderboard">
+    <h3>Leaderboard</h3>
+    <ul id="lbList"></ul>
+  </div>
+
+  <div id="winner"></div>
+
+  <script src="https://cdn.socket.io/4.6.1/socket.io.min.js"></script>
+  <script>
+    const socket = io("http://localhost:5000");
+
+    let currentRoomId = null;
+    let passageText = "";
+    let startTime = null;
+    let raceFinished = false;
+    let bots = [];
+    let player = null;
+
+    const usernameEl = document.getElementById("username");
+    const createRoomBtn = document.getElementById("createRoom");
+    const joinRoomBtn = document.getElementById("joinRoom");
+    const joinRoomIdEl = document.getElementById("joinRoomId");
+    const playBotsBtn = document.getElementById("playBots");
+    const roomInfo = document.getElementById("roomInfo");
+    const roomIdDisplay = document.getElementById("roomIdDisplay");
+    const waitingMsg = document.getElementById("waitingMsg");
+    const startRaceBtn = document.getElementById("startRace");
+    const countdownEl = document.getElementById("countdown");
+    const gameArea = document.getElementById("gameArea");
+    const passageEl = document.getElementById("passage");
+    const inputArea = document.getElementById("inputArea");
+    const lbList = document.getElementById("lbList");
+    const winnerEl = document.getElementById("winner");
+    const progressEl = document.getElementById("progress");
+    const wpmEl = document.getElementById("wpm");
+    const accuracyEl = document.getElementById("accuracy");
+
+    // --- Multiplayer room handlers ---
+    createRoomBtn.onclick = () => {
+      socket.emit("room:create", { username: usernameEl.value }, (res) => {
+        if (res.ok) {
+          currentRoomId = res.roomId;
+          roomIdDisplay.textContent = currentRoomId;
+          roomInfo.style.display = "block";
+          startRaceBtn.style.display = "inline";
+        }
+      });
+    };
+
+    joinRoomBtn.onclick = () => {
+      socket.emit("room:join", { roomId: joinRoomIdEl.value, username: usernameEl.value }, (res) => {
+        if (res.ok) {
+          currentRoomId = res.room.id;
+          roomIdDisplay.textContent = currentRoomId;
+          roomInfo.style.display = "block";
+        }
+      });
+    };
+
+    startRaceBtn.onclick = () => {
+      socket.emit("race:start", { roomId: currentRoomId, countdownSec: 3 });
+    };
+
+    socket.on("room:playerJoined", ({ players }) => {
+      if (players.length >= 2) {
+        waitingMsg.textContent = "Ready to start!";
+      }
+    });
+
+    socket.on("race:countdown", ({ countdownSec }) => {
+      let sec = countdownSec;
+      countdownEl.textContent = sec;
+      const interval = setInterval(() => {
+        sec--;
+        countdownEl.textContent = sec > 0 ? sec : "GO!";
+        if (sec <= 0) clearInterval(interval);
+      }, 1000);
+    });
+
+    socket.on("race:started", ({ passageText: text }) => {
+      startRace(text);
+    });
+
+    // --- Play with Bots ---
+    playBotsBtn.onclick = async () => {
+      try {
+        const res = await fetch("http://localhost:5000/api/passages/random");
+        const data = await res.json();
+        startRace(data.text, true);
+      } catch (err) {
+        console.error("Error fetching passage:", err);
+      }
+    };
+
+    function startRace(text, isBotRace = false) {
+      passageText = text;
+      raceFinished = false;
+      bots = [];
+      player = { username: usernameEl.value, progress: 0, wpm: 0, accuracy: 100 };
+
+      passageEl.innerHTML = passageText.split("").map(c => `<span>${c}</span>`).join("");
+      gameArea.style.display = "block";
+      inputArea.disabled = true;
+      inputArea.value = "";
+      inputArea.focus();
+      startTime = null;
+      progressEl.style.width = "0%";
+      wpmEl.textContent = "0";
+      accuracyEl.textContent = "100";
+      winnerEl.textContent = "";
+      lbList.innerHTML = "";
+
+      let countdown = 3;
+      countdownEl.textContent = countdown;
+      const cdInterval = setInterval(() => {
+        countdown--;
+        countdownEl.textContent = countdown > 0 ? countdown : "GO!";
+        if (countdown <= 0) {
+          clearInterval(cdInterval);
+          inputArea.disabled = false;
+          inputArea.focus();
+          startTime = Date.now();
+          if (isBotRace) initBots();
+        }
+      }, 1000);
+
+      updateLeaderboard();
+    }
+
+    function initBots() {
+      const botNames = ["BotAlice", "BotBob", "BotCharlie"];
+      bots = botNames.map(name => {
+        const wpm = Math.random() * 10 + 30; // 30-40 WPM
+        const cpmPerSec = (wpm * 5) / 60;
+        return { username: name, progress: 0, wpm, accuracy: 100, cpmPerSec };
+      });
+
+      bots.forEach(bot => {
+        bot.interval = setInterval(() => {
+          if (raceFinished) { clearInterval(bot.interval); return; }
+          bot.progress += (bot.cpmPerSec / passageText.length) * 100;
+          if (bot.progress > 100) bot.progress = 100;
+          updateLeaderboard();
+          checkFinish();
+        }, 1000);
+      });
+    }
+
+    // --- Typing input ---
+    inputArea.addEventListener("input", () => {
+      if (raceFinished) return;
+
+      const typed = inputArea.value;
+      let correctCount = 0;
+      passageEl.querySelectorAll("span").forEach((span, i) => {
+        const char = typed[i] || "";
+        if (char === span.textContent) correctCount++;
+      });
+
+      const progress = Math.min(100, (typed.length / passageText.length) * 100);
+      progressEl.style.width = progress + "%";
+
+      const elapsedMin = (Date.now() - startTime) / 60000;
+      const wpm = Math.round((typed.length / 5) / elapsedMin) || 0;
+      const accuracy = Math.round((correctCount / typed.length) * 100) || 100;
+
+      player.progress = progress;
+      player.wpm = wpm;
+      player.accuracy = accuracy;
+
+      updateLeaderboard();
+
+      if (progress >= 100 && accuracy >= 100) finishRace(player.username);
+    });
+
+    function updateLeaderboard() {
+      const players = [player, ...bots.map(b => ({ ...b }))];
+      players.sort((a, b) => {
+        if (b.progress === a.progress) return b.accuracy - a.accuracy;
+        return b.progress - a.progress;
+      });
+
+      lbList.innerHTML = "";
+      players.forEach(p => {
+        const li = document.createElement("li");
+        li.textContent = `${p.username}: ${p.progress.toFixed(1)}% - ${p.wpm.toFixed(1)} WPM (${p.accuracy}%)`;
+        if (p.progress >= 100 && p.accuracy >= 100) li.classList.add("winner");
+        lbList.appendChild(li);
+      });
+    }
+
+    function checkFinish() {
+      bots.forEach(bot => {
+        if (bot.progress >= 100) finishRace(bot.username);
+      });
+    }
+
+    function finishRace(winnerName) {
+      if (raceFinished) return;
+      raceFinished = true;
+      inputArea.disabled = true;
+      bots.forEach(b => clearInterval(b.interval));
+      winnerEl.textContent = `Winner: ${winnerName}`;
+      updateLeaderboard();
+    }
+  </script>
+</body>
+</html>
