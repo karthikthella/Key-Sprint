@@ -1,51 +1,108 @@
-// server/src/routes/users.js
 import { Router } from 'express';
 import User from '../models/User.js';
+import RaceResult from '../models/RaceResult.js';
 
 const router = Router();
 
 /**
- * POST /api/users
- * Create a simple user (username required).
- * This is intentionally minimal for now (no passwords).
+ * GET /api/users/leaderboard/top
+ * Returns top users ranked by highest bestWPM, avgWPM, or racesWon
+ * Query params: ?category=bestWPM|avgWPM|racesWon&limit=20
  */
-router.post('/', async (req, res) => {
+router.get('/leaderboard/top', async (req, res) => {
   try {
-    const { username, email } = req.body;
-    if (!username || username.trim().length === 0) {
-      return res.status(400).json({ error: 'username required' });
+    const limit = Math.min(Math.max(parseInt(req.query.limit, 10) || 20, 1), 100);
+    const category = req.query.category || 'bestWPM';
+
+    let sortCriteria = { bestWPM: -1, avgWPM: -1 };
+    if (category === 'avgWPM') {
+      sortCriteria = { avgWPM: -1, bestWPM: -1 };
+    } else if (category === 'racesWon') {
+      sortCriteria = { racesWon: -1, bestWPM: -1 };
     }
 
-    // Check if username is taken
-    const existing = await User.findOne({ username: username.trim() });
-    if (existing) {
-      return res.status(409).json({ error: 'username taken' });
-    }
+    const topUsers = await User.find({ racesCount: { $gt: 0 } })
+      .sort(sortCriteria)
+      .limit(limit)
+      .select('username avatar bestWPM avgWPM racesCount racesWon avgAccuracy createdAt')
+      .lean();
 
-    // create new user document
-    const user = new User({ username: username.trim(), email: email?.trim() || null });
-    await user.save();
-
-    // return the created user (lean and safe)
-    return res.status(201).json(user);
+    return res.json({ category, leaderboard: topUsers });
   } catch (err) {
-    console.error('POST /api/users error', err);
-    return res.status(500).json({ error: 'server error' });
+    console.error('GET /api/users/leaderboard/top error:', err);
+    return res.status(500).json({ error: 'Failed to retrieve leaderboard' });
   }
 });
 
 /**
- * GET /api/users/:id
- * Get user by id (includes stats)
+ * GET /api/users/:id/stats
+ * Detailed statistics breakdown and recent race performance for a user
  */
-router.get('/:id', async (req, res) => {
+router.get('/:id/stats', async (req, res) => {
   try {
-    const user = await User.findById(req.params.id).lean();
-    if (!user) return res.status(404).json({ error: 'user not found' });
-    return res.json(user);
+    const userId = req.params.id;
+    const user = await User.findById(userId)
+      .select('username avatar bestWPM avgWPM racesCount racesWon avgAccuracy totalTimePlayedMs createdAt')
+      .lean();
+
+    if (!user) {
+      return res.status(404).json({ error: 'User not found' });
+    }
+
+    // Fetch last 10 races for performance graph / trend
+    const recentRaces = await RaceResult.find({ user: userId })
+      .populate('passage', 'source universe difficulty')
+      .sort({ createdAt: -1 })
+      .limit(10)
+      .lean();
+
+    const winRate = user.racesCount > 0 ? Math.round((user.racesWon / user.racesCount) * 100) : 0;
+
+    return res.json({
+      user,
+      stats: {
+        totalRaces: user.racesCount,
+        racesWon: user.racesWon,
+        winRatePercent: winRate,
+        bestWPM: user.bestWPM,
+        avgWPM: user.avgWPM,
+        avgAccuracy: user.avgAccuracy,
+        totalTimePlayedSec: Math.round((user.totalTimePlayedMs || 0) / 1000)
+      },
+      recentRaces
+    });
   } catch (err) {
-    console.error('GET /api/users/:id error', err);
-    return res.status(500).json({ error: 'server error' });
+    console.error('GET /api/users/:id/stats error:', err);
+    return res.status(500).json({ error: 'Failed to retrieve user statistics' });
+  }
+});
+
+/**
+ * PATCH /api/users/profile
+ * Update user avatar / constructor team livery
+ */
+router.patch('/profile', async (req, res) => {
+  try {
+    const authHeader = req.headers.authorization;
+    if (!authHeader) return res.status(401).json({ error: 'Auth token required' });
+
+    const token = authHeader.split(' ')[1];
+    const jwt = (await import('jsonwebtoken')).default;
+    const { JWT_SECRET } = await import('../config/env.js');
+    const payload = jwt.verify(token, JWT_SECRET);
+
+    const { avatar } = req.body;
+    const updatedUser = await User.findByIdAndUpdate(
+      payload.id,
+      { ...(avatar && { avatar }) },
+      { new: true }
+    ).select('username avatar bestWPM avgWPM racesCount racesWon avgAccuracy totalTimePlayedMs createdAt');
+
+    if (!updatedUser) return res.status(404).json({ error: 'User not found' });
+    return res.json({ ok: true, user: updatedUser });
+  } catch (err) {
+    console.error('PATCH /api/users/profile error:', err);
+    return res.status(500).json({ error: 'Failed to update profile' });
   }
 });
 

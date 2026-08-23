@@ -1,56 +1,284 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
   <meta charset="UTF-8">
-  <title>Typing Race Test</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Key-Sprint | Backend Live Testbench</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Fira+Code:wght@400;600&family=Inter:wght@400;600;700;800&display=swap" rel="stylesheet">
   <style>
-    body { font-family: Arial, sans-serif; padding: 20px; }
-    #passage { border: 1px solid #ccc; padding: 10px; margin: 10px 0; white-space: pre-wrap; line-height: 1.5; }
-    #inputArea { width: 100%; height: 80px; font-size: 16px; }
-    #leaderboard { margin-top: 20px; }
-    .winner { font-weight: bold; color: green; }
-    .correct { color: green; }
-    .incorrect { color: red; }
-    #progressBar { width: 100%; height: 20px; background: #eee; margin-top: 10px; }
-    #progress { height: 100%; width: 0%; background: #4caf50; }
+    :root {
+      --bg: #0d1117;
+      --card: #161b22;
+      --border: #30363d;
+      --primary: #58a6ff;
+      --accent: #238636;
+      --text: #c9d1d9;
+      --heading: #f0f6fc;
+      --danger: #f85149;
+      --gold: #d29922;
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: 'Inter', sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      padding: 24px;
+      display: flex;
+      justify-content: center;
+    }
+    .container {
+      width: 100%;
+      max-width: 900px;
+      display: flex;
+      flex-direction: column;
+      gap: 20px;
+    }
+    header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      border-bottom: 1px solid var(--border);
+      padding-bottom: 16px;
+    }
+    h1 { color: var(--heading); font-size: 28px; font-weight: 800; }
+    .badge {
+      font-size: 12px;
+      padding: 4px 10px;
+      border-radius: 20px;
+      background: #1f6feb26;
+      color: var(--primary);
+      border: 1px solid #388bfd4d;
+    }
+    .card {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 20px;
+      display: flex;
+      flex-direction: column;
+      gap: 16px;
+    }
+    .row { display: flex; gap: 12px; align-items: center; flex-wrap: wrap; }
+    input, select, button, textarea {
+      font-family: inherit;
+      font-size: 14px;
+      padding: 10px 14px;
+      border-radius: 8px;
+      border: 1px solid var(--border);
+      background: #0d1117;
+      color: var(--heading);
+      outline: none;
+    }
+    input:focus, select:focus, textarea:focus {
+      border-color: var(--primary);
+    }
+    button {
+      cursor: pointer;
+      font-weight: 600;
+      background: #21262d;
+      transition: all 0.2s;
+    }
+    button:hover { background: #30363d; }
+    button.primary { background: var(--accent); color: #fff; border-color: transparent; }
+    button.primary:hover { background: #2ea043; }
+    button.special { background: #8957e5; color: #fff; border-color: transparent; }
+    button.special:hover { background: #9a67ea; }
+    #passage {
+      font-family: 'Fira Code', monospace;
+      font-size: 18px;
+      line-height: 1.7;
+      background: #090d13;
+      padding: 18px;
+      border-radius: 10px;
+      border: 1px solid var(--border);
+      user-select: none;
+    }
+    .char-correct { color: #3fb950; }
+    .char-incorrect { background: #f8514940; color: #ff7b72; text-decoration: underline; }
+    .char-current { background: #58a6ff40; border-bottom: 2px solid var(--primary); }
+    textarea#inputArea {
+      width: 100%;
+      height: 80px;
+      resize: none;
+      font-family: 'Fira Code', monospace;
+      font-size: 16px;
+    }
+    .progress-bar {
+      height: 10px;
+      background: #21262d;
+      border-radius: 6px;
+      overflow: hidden;
+    }
+    .progress-fill {
+      height: 100%;
+      width: 0%;
+      background: linear-gradient(90deg, #238636, #3fb950);
+      transition: width 0.15s ease-out;
+    }
+    .metrics {
+      display: flex;
+      gap: 20px;
+      font-size: 15px;
+      font-weight: 600;
+    }
+    .leaderboard-list {
+      list-style: none;
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+    .leaderboard-item {
+      display: flex;
+      justify-content: space-between;
+      padding: 10px 14px;
+      background: #0d1117;
+      border-radius: 8px;
+      border: 1px solid var(--border);
+      font-size: 14px;
+    }
+    .leaderboard-item.winner {
+      border-color: var(--gold);
+      background: #d299221a;
+      font-weight: 700;
+      color: #e3b341;
+    }
+    .reactions-bar {
+      display: flex;
+      gap: 8px;
+    }
+    .chat-box {
+      height: 120px;
+      overflow-y: auto;
+      background: #090d13;
+      padding: 10px;
+      border-radius: 8px;
+      border: 1px solid var(--border);
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+      font-size: 13px;
+    }
+    .chat-msg { color: #8b949e; }
+    .chat-msg strong { color: var(--heading); }
+    .reaction-fly {
+      font-size: 24px;
+      animation: fly 1.2s ease-out forwards;
+      position: absolute;
+    }
   </style>
 </head>
 <body>
-  <h1>Typing Race Test</h1>
+  <div class="container">
+    <header>
+      <div>
+        <h1>⚡ Key-Sprint</h1>
+        <p style="color: #8b949e; font-size: 14px;">Next-Gen Multiplayer Typing Testbench</p>
+      </div>
+      <div id="connectionStatus" class="badge">Connecting to backend...</div>
+    </header>
 
-  <div>
-    <label>Username: <input id="username" /></label>
+    <!-- SETUP CONTROLS -->
+    <div class="card" id="setupCard">
+      <div class="row">
+        <label>Username: <input id="username" value="SpeedRacer" style="width: 140px;" /></label>
+        <label>Universe:
+          <select id="universeSelect">
+            <option value="all">All Universes</option>
+            <option value="tech">Tech</option>
+            <option value="movies">Movies</option>
+            <option value="gaming">Gaming</option>
+            <option value="anime">Anime</option>
+            <option value="literature">Literature</option>
+            <option value="quotes">Quotes</option>
+          </select>
+        </label>
+        <label>Difficulty:
+          <select id="difficultySelect">
+            <option value="medium">Medium</option>
+            <option value="easy">Easy</option>
+            <option value="hard">Hard</option>
+          </select>
+        </label>
+      </div>
+
+      <div class="row">
+        <button id="quickMatchBtn" class="special">⚡ Quick Match</button>
+        <button id="createRoomBtn" class="primary">➕ Create Room</button>
+        <input id="joinRoomId" placeholder="Room Code" style="width: 120px;" />
+        <button id="joinRoomBtn">Join Room</button>
+        <button id="playBotsBtn">🤖 Practice Solo (Bots)</button>
+      </div>
+    </div>
+
+    <!-- ROOM INFO -->
+    <div class="card" id="roomCard" style="display: none;">
+      <div style="display: flex; justify-content: space-between; align-items: center;">
+        <div>
+          <h3>Room: <span id="roomIdDisplay" style="color: var(--primary);"></span></h3>
+          <p id="roomStatusMsg" style="color: #8b949e; font-size: 13px;">Waiting for players...</p>
+        </div>
+        <div class="row">
+          <button id="startRaceBtn" class="primary" style="display: none;">🚀 Start Race</button>
+          <button id="rematchBtn" class="special" style="display: none;">🔄 Play Again / Rematch</button>
+        </div>
+      </div>
+
+      <div id="countdown" style="font-size: 32px; font-weight: 800; color: var(--gold); text-align: center;"></div>
+    </div>
+
+    <!-- RACE ARENA -->
+    <div class="card" id="gameArea" style="display: none;">
+      <div style="display: flex; justify-content: space-between; font-size: 13px; color: #8b949e;">
+        <span id="passageSource">Source: Key-Sprint</span>
+        <span id="passageUniverse">Universe: Tech</span>
+      </div>
+
+      <div id="passage"></div>
+
+      <div class="progress-bar">
+        <div id="progressFill" class="progress-fill"></div>
+      </div>
+
+      <textarea id="inputArea" placeholder="Get ready to type here..." disabled></textarea>
+
+      <div class="metrics">
+        <div>WPM: <span id="wpm" style="color: var(--primary);">0</span></div>
+        <div>Accuracy: <span id="accuracy" style="color: #3fb950;">100</span>%</div>
+        <div>Progress: <span id="progressText">0</span>%</div>
+      </div>
+
+      <div class="reactions-bar">
+        <span style="font-size: 13px; color: #8b949e; margin-right: 6px; align-self: center;">Reactions:</span>
+        <button onclick="sendReaction('🔥')">🔥</button>
+        <button onclick="sendReaction('🚀')">🚀</button>
+        <button onclick="sendReaction('⚡')">⚡</button>
+        <button onclick="sendReaction('💀')">💀</button>
+        <button onclick="sendReaction('GG')">GG</button>
+      </div>
+    </div>
+
+    <!-- LIVE LEADERBOARD & CHAT -->
+    <div class="row" style="align-items: flex-start;">
+      <div class="card" style="flex: 1;">
+        <h3>🏁 Live Leaderboard</h3>
+        <ul id="leaderboardList" class="leaderboard-list">
+          <li style="color: #8b949e; font-size: 13px;">No active race yet.</li>
+        </ul>
+      </div>
+
+      <div class="card" style="flex: 1;" id="chatCard">
+        <h3>💬 Room Chat</h3>
+        <div id="chatBox" class="chat-box"></div>
+        <div class="row" style="margin-top: 6px;">
+          <input id="chatInput" placeholder="Type a message..." style="flex: 1;" />
+          <button id="sendChatBtn">Send</button>
+        </div>
+      </div>
+    </div>
   </div>
-  <div>
-    <button id="createRoom">Create Room</button>
-    <input id="joinRoomId" placeholder="Enter Room ID to Join"/>
-    <button id="joinRoom">Join Room</button>
-    <button id="playBots">Play with Bots</button>
-  </div>
 
-  <div id="roomInfo" style="display:none;">
-    <h3>Room: <span id="roomIdDisplay"></span></h3>
-    <div id="waitingMsg">Waiting for players...</div>
-    <button id="startRace" style="display:none;">Start Race (Host Only)</button>
-  </div>
-
-  <div id="countdown" style="font-size: 24px; margin-top: 10px;"></div>
-
-  <div id="gameArea" style="display:none;">
-    <div id="passage"></div>
-    <div id="progressBar"><div id="progress"></div></div>
-    <textarea id="inputArea" disabled></textarea>
-    <div>WPM: <span id="wpm">0</span> | Accuracy: <span id="accuracy">100</span>%</div>
-  </div>
-
-  <div id="leaderboard">
-    <h3>Leaderboard</h3>
-    <ul id="lbList"></ul>
-  </div>
-
-  <div id="winner"></div>
-
-  <script src="https://cdn.socket.io/4.6.1/socket.io.min.js"></script>
+  <script src="https://cdn.socket.io/4.8.1/socket.io.min.js"></script>
   <script>
     const socket = io("http://localhost:5000");
 
@@ -58,195 +286,299 @@
     let passageText = "";
     let startTime = null;
     let raceFinished = false;
-    let bots = [];
-    let player = null;
 
-    const usernameEl = document.getElementById("username");
-    const createRoomBtn = document.getElementById("createRoom");
-    const joinRoomBtn = document.getElementById("joinRoom");
-    const joinRoomIdEl = document.getElementById("joinRoomId");
-    const playBotsBtn = document.getElementById("playBots");
-    const roomInfo = document.getElementById("roomInfo");
+    const connectionStatus = document.getElementById("connectionStatus");
+    const usernameInput = document.getElementById("username");
+    const universeSelect = document.getElementById("universeSelect");
+    const difficultySelect = document.getElementById("difficultySelect");
+    const quickMatchBtn = document.getElementById("quickMatchBtn");
+    const createRoomBtn = document.getElementById("createRoomBtn");
+    const joinRoomBtn = document.getElementById("joinRoomBtn");
+    const joinRoomIdInput = document.getElementById("joinRoomId");
+    const playBotsBtn = document.getElementById("playBotsBtn");
+    const roomCard = document.getElementById("roomCard");
     const roomIdDisplay = document.getElementById("roomIdDisplay");
-    const waitingMsg = document.getElementById("waitingMsg");
-    const startRaceBtn = document.getElementById("startRace");
+    const roomStatusMsg = document.getElementById("roomStatusMsg");
+    const startRaceBtn = document.getElementById("startRaceBtn");
+    const rematchBtn = document.getElementById("rematchBtn");
     const countdownEl = document.getElementById("countdown");
     const gameArea = document.getElementById("gameArea");
     const passageEl = document.getElementById("passage");
+    const passageSource = document.getElementById("passageSource");
+    const passageUniverse = document.getElementById("passageUniverse");
+    const progressFill = document.getElementById("progressFill");
+    const progressText = document.getElementById("progressText");
     const inputArea = document.getElementById("inputArea");
-    const lbList = document.getElementById("lbList");
-    const winnerEl = document.getElementById("winner");
-    const progressEl = document.getElementById("progress");
     const wpmEl = document.getElementById("wpm");
     const accuracyEl = document.getElementById("accuracy");
+    const leaderboardList = document.getElementById("leaderboardList");
+    const chatBox = document.getElementById("chatBox");
+    const chatInput = document.getElementById("chatInput");
+    const sendChatBtn = document.getElementById("sendChatBtn");
 
-    // --- Multiplayer room handlers ---
+    socket.on("connect", () => {
+      connectionStatus.textContent = "🟢 Server Connected";
+      connectionStatus.style.background = "#23863626";
+      connectionStatus.style.color = "#3fb950";
+    });
+
+    socket.on("disconnect", () => {
+      connectionStatus.textContent = "🔴 Disconnected";
+      connectionStatus.style.background = "#f8514926";
+      connectionStatus.style.color = "#f85149";
+    });
+
+    // Quick Match
+    quickMatchBtn.onclick = () => {
+      socket.emit("room:quickMatch", {
+        username: usernameInput.value,
+        universe: universeSelect.value,
+        difficulty: difficultySelect.value
+      }, (res) => {
+        if (res.ok) {
+          setupRoomView(res.room, res.roomId);
+        }
+      });
+    };
+
+    // Create Room
     createRoomBtn.onclick = () => {
-      socket.emit("room:create", { username: usernameEl.value }, (res) => {
+      socket.emit("room:create", {
+        username: usernameInput.value,
+        universe: universeSelect.value,
+        difficulty: difficultySelect.value
+      }, (res) => {
         if (res.ok) {
-          currentRoomId = res.roomId;
-          roomIdDisplay.textContent = currentRoomId;
-          roomInfo.style.display = "block";
-          startRaceBtn.style.display = "inline";
+          setupRoomView(res.room, res.roomId, true);
         }
       });
     };
 
+    // Join Room
     joinRoomBtn.onclick = () => {
-      socket.emit("room:join", { roomId: joinRoomIdEl.value, username: usernameEl.value }, (res) => {
+      const rId = joinRoomIdInput.value.trim();
+      if (!rId) return alert("Enter Room Code");
+      socket.emit("room:join", { roomId: rId, username: usernameInput.value }, (res) => {
         if (res.ok) {
-          currentRoomId = res.room.id;
-          roomIdDisplay.textContent = currentRoomId;
-          roomInfo.style.display = "block";
+          setupRoomView(res.room, res.room.id, false);
+        } else {
+          alert(res.error);
         }
       });
     };
 
-    startRaceBtn.onclick = () => {
-      socket.emit("race:start", { roomId: currentRoomId, countdownSec: 3 });
+    // Play with Bots
+    playBotsBtn.onclick = () => {
+      socket.emit("room:createBotRoom", {
+        username: usernameInput.value,
+        universe: universeSelect.value,
+        difficulty: difficultySelect.value,
+        botCount: 3
+      }, (res) => {
+        if (res.ok) {
+          setupRoomView(res.room, res.roomId, false);
+        }
+      });
     };
 
-    socket.on("room:playerJoined", ({ players }) => {
-      if (players.length >= 2) {
-        waitingMsg.textContent = "Ready to start!";
+    // Start Race (Host)
+    startRaceBtn.onclick = () => {
+      socket.emit("race:start", { roomId: currentRoomId, countdownSec: 3 }, (res) => {
+        if (!res.ok) alert(res.error);
+      });
+    };
+
+    // Rematch
+    rematchBtn.onclick = () => {
+      socket.emit("race:rematch", { roomId: currentRoomId }, (res) => {
+        if (!res.ok) alert(res.error);
+      });
+    };
+
+    function setupRoomView(room, roomId, isHost = false) {
+      currentRoomId = roomId;
+      roomIdDisplay.textContent = roomId;
+      roomCard.style.display = "flex";
+      rematchBtn.style.display = "none";
+      countdownEl.textContent = "";
+
+      if (room.hostSocketId === socket.id || isHost) {
+        startRaceBtn.style.display = "inline-block";
+      } else {
+        startRaceBtn.style.display = "none";
+      }
+
+      renderLeaderboard(room.players || []);
+    }
+
+    socket.on("room:playerJoined", ({ player, players }) => {
+      renderLeaderboard(players);
+      addChatMessage("System", `${player.username} joined the room.`);
+    });
+
+    socket.on("room:playerLeft", ({ socketId, players }) => {
+      renderLeaderboard(players);
+      addChatMessage("System", `A player left the room.`);
+    });
+
+    socket.on("room:newHost", ({ hostSocketId, hostUsername }) => {
+      if (socket.id === hostSocketId) {
+        startRaceBtn.style.display = "inline-block";
+        addChatMessage("System", `👑 You are now the room host!`);
+      } else {
+        addChatMessage("System", `👑 ${hostUsername || 'New host'} is now the room host.`);
       }
     });
 
     socket.on("race:countdown", ({ countdownSec }) => {
       let sec = countdownSec;
       countdownEl.textContent = sec;
+      startRaceBtn.style.display = "none";
       const interval = setInterval(() => {
         sec--;
-        countdownEl.textContent = sec > 0 ? sec : "GO!";
+        countdownEl.textContent = sec > 0 ? sec : "GO! 🏁";
         if (sec <= 0) clearInterval(interval);
       }, 1000);
     });
 
-    socket.on("race:started", ({ passageText: text }) => {
-      startRace(text);
+    socket.on("race:started", (data) => {
+      passageText = data.passageText;
+      passageSource.textContent = `Source: ${data.source || 'General'}`;
+      passageUniverse.textContent = `Universe: ${data.universe || 'General'}`;
+      countdownEl.textContent = "";
+      startTypingArena();
     });
 
-    // --- Play with Bots ---
-    playBotsBtn.onclick = async () => {
-      try {
-        const res = await fetch("http://localhost:5000/api/passages/random");
-        const data = await res.json();
-        startRace(data.text, true);
-      } catch (err) {
-        console.error("Error fetching passage:", err);
-      }
-    };
+    socket.on("race:leaderboard", ({ leaderboard }) => {
+      renderLeaderboard(leaderboard);
+    });
 
-    function startRace(text, isBotRace = false) {
-      passageText = text;
-      raceFinished = false;
-      bots = [];
-      player = { username: usernameEl.value, progress: 0, wpm: 0, accuracy: 100 };
-
-      passageEl.innerHTML = passageText.split("").map(c => `<span>${c}</span>`).join("");
-      gameArea.style.display = "block";
+    socket.on("race:finished", ({ winner, finalLeaderboard }) => {
+      raceFinished = true;
       inputArea.disabled = true;
+      renderLeaderboard(finalLeaderboard);
+      countdownEl.textContent = `🏆 Winner: ${winner.username}!`;
+      rematchBtn.style.display = "inline-block";
+    });
+
+    socket.on("room:rematchReady", ({ room }) => {
+      raceFinished = false;
+      gameArea.style.display = "none";
+      countdownEl.textContent = "Rematch Ready!";
+      setupRoomView(room, room.id);
+    });
+
+    // Reactions & Chat
+    function sendReaction(emoji) {
+      if (!currentRoomId) return;
+      socket.emit("room:reaction", { roomId: currentRoomId, emoji });
+    }
+
+    socket.on("room:reaction", ({ username, emoji }) => {
+      addChatMessage(username, emoji);
+    });
+
+    sendChatBtn.onclick = () => {
+      const msg = chatInput.value.trim();
+      if (!msg || !currentRoomId) return;
+      socket.emit("room:chat", { roomId: currentRoomId, message: msg });
+      chatInput.value = "";
+    };
+    chatInput.addEventListener("keydown", (e) => {
+      if (e.key === "Enter") sendChatBtn.click();
+    });
+
+    socket.on("room:chat", ({ username, message }) => {
+      addChatMessage(username, message);
+    });
+
+    function addChatMessage(user, msg) {
+      const p = document.createElement("div");
+      p.className = "chat-msg";
+      p.innerHTML = `<strong>${user}:</strong> ${msg}`;
+      chatBox.appendChild(p);
+      chatBox.scrollTop = chatBox.scrollHeight;
+    }
+
+    // Typing Logic
+    function startTypingArena() {
+      raceFinished = false;
+      gameArea.style.display = "flex";
+      inputArea.disabled = false;
       inputArea.value = "";
       inputArea.focus();
-      startTime = null;
-      progressEl.style.width = "0%";
+      startTime = Date.now();
+      progressFill.style.width = "0%";
+      progressText.textContent = "0";
       wpmEl.textContent = "0";
       accuracyEl.textContent = "100";
-      winnerEl.textContent = "";
-      lbList.innerHTML = "";
 
-      let countdown = 3;
-      countdownEl.textContent = countdown;
-      const cdInterval = setInterval(() => {
-        countdown--;
-        countdownEl.textContent = countdown > 0 ? countdown : "GO!";
-        if (countdown <= 0) {
-          clearInterval(cdInterval);
-          inputArea.disabled = false;
-          inputArea.focus();
-          startTime = Date.now();
-          if (isBotRace) initBots();
+      renderPassage("");
+    }
+
+    function renderPassage(typed) {
+      let html = "";
+      for (let i = 0; i < passageText.length; i++) {
+        const expected = passageText[i];
+        const actual = typed[i];
+        let cls = "";
+        if (actual == null) {
+          cls = (i === typed.length) ? "char-current" : "";
+        } else if (actual === expected) {
+          cls = "char-correct";
+        } else {
+          cls = "char-incorrect";
         }
-      }, 1000);
-
-      updateLeaderboard();
+        html += `<span class="${cls}">${expected}</span>`;
+      }
+      passageEl.innerHTML = html;
     }
 
-    function initBots() {
-      const botNames = ["BotAlice", "BotBob", "BotCharlie"];
-      bots = botNames.map(name => {
-        const wpm = Math.random() * 10 + 30; // 30-40 WPM
-        const cpmPerSec = (wpm * 5) / 60;
-        return { username: name, progress: 0, wpm, accuracy: 100, cpmPerSec };
-      });
-
-      bots.forEach(bot => {
-        bot.interval = setInterval(() => {
-          if (raceFinished) { clearInterval(bot.interval); return; }
-          bot.progress += (bot.cpmPerSec / passageText.length) * 100;
-          if (bot.progress > 100) bot.progress = 100;
-          updateLeaderboard();
-          checkFinish();
-        }, 1000);
-      });
-    }
-
-    // --- Typing input ---
     inputArea.addEventListener("input", () => {
       if (raceFinished) return;
 
       const typed = inputArea.value;
+      renderPassage(typed);
+
       let correctCount = 0;
-      passageEl.querySelectorAll("span").forEach((span, i) => {
-        const char = typed[i] || "";
-        if (char === span.textContent) correctCount++;
+      for (let i = 0; i < typed.length; i++) {
+        if (typed[i] === passageText[i]) correctCount++;
+      }
+
+      const progress = Math.min(100, Math.round((typed.length / passageText.length) * 100));
+      const elapsedMin = Math.max(0.01, (Date.now() - startTime) / 60000);
+      const wpm = Math.round((typed.length / 5) / elapsedMin) || 0;
+      const accuracy = typed.length > 0 ? Math.round((correctCount / typed.length) * 100) : 100;
+
+      progressFill.style.width = `${progress}%`;
+      progressText.textContent = progress;
+      wpmEl.textContent = wpm;
+      accuracyEl.textContent = accuracy;
+
+      socket.emit("race:progress", {
+        roomId: currentRoomId,
+        progress,
+        wpm,
+        accuracy
       });
 
-      const progress = Math.min(100, (typed.length / passageText.length) * 100);
-      progressEl.style.width = progress + "%";
-
-      const elapsedMin = (Date.now() - startTime) / 60000;
-      const wpm = Math.round((typed.length / 5) / elapsedMin) || 0;
-      const accuracy = Math.round((correctCount / typed.length) * 100) || 100;
-
-      player.progress = progress;
-      player.wpm = wpm;
-      player.accuracy = accuracy;
-
-      updateLeaderboard();
-
-      if (progress >= 100 && accuracy >= 100) finishRace(player.username);
+      if (progress >= 100 && accuracy >= 100) {
+        socket.emit("race:finish", { roomId: currentRoomId });
+      }
     });
 
-    function updateLeaderboard() {
-      const players = [player, ...bots.map(b => ({ ...b }))];
-      players.sort((a, b) => {
-        if (b.progress === a.progress) return b.accuracy - a.accuracy;
-        return b.progress - a.progress;
-      });
-
-      lbList.innerHTML = "";
-      players.forEach(p => {
+    function renderLeaderboard(players) {
+      leaderboardList.innerHTML = "";
+      players.forEach((p, idx) => {
         const li = document.createElement("li");
-        li.textContent = `${p.username}: ${p.progress.toFixed(1)}% - ${p.wpm.toFixed(1)} WPM (${p.accuracy}%)`;
-        if (p.progress >= 100 && p.accuracy >= 100) li.classList.add("winner");
-        lbList.appendChild(li);
+        li.className = `leaderboard-item ${p.finished && idx === 0 ? 'winner' : ''}`;
+        const icon = p.isBot ? '🤖' : (p.finished && idx === 0 ? '👑' : '🏎️');
+        li.innerHTML = `
+          <div><strong>${icon} ${p.username}</strong> ${p.finished ? '<span style="color:#3fb950;">(Finished)</span>' : ''}</div>
+          <div>${p.progress}% | ${p.wpm} WPM (${p.accuracy}%)</div>
+        `;
+        leaderboardList.appendChild(li);
       });
-    }
-
-    function checkFinish() {
-      bots.forEach(bot => {
-        if (bot.progress >= 100) finishRace(bot.username);
-      });
-    }
-
-    function finishRace(winnerName) {
-      if (raceFinished) return;
-      raceFinished = true;
-      inputArea.disabled = true;
-      bots.forEach(b => clearInterval(b.interval));
-      winnerEl.textContent = `Winner: ${winnerName}`;
-      updateLeaderboard();
     }
   </script>
 </body>

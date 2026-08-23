@@ -1,16 +1,15 @@
-// clearPassages.js
-import mongoose from "mongoose";
-import Passage from "./src/models/Passage.js";
-import { connectMongo } from "./src/config/db.js";
+import Passage from './src/models/Passage.js';
+import { connectMongo, disconnectMongo } from './src/config/db.js';
 
 (async () => {
   try {
     await connectMongo();
-    await Passage.deleteMany({});
-    console.log("🗑️ Cleared all passages from DB!");
+    const result = await Passage.deleteMany({});
+    console.log(`🗑️  Cleared ${result.deletedCount} passages from the database.`);
   } catch (err) {
-    console.error("❌ Error clearing passages:", err);
+    console.error('❌ Error clearing passages:', err.message);
   } finally {
-    mongoose.disconnect();
+    await disconnectMongo();
+    process.exit(0);
   }
 })();

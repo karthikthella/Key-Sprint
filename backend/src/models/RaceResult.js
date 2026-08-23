@@ -1,25 +1,57 @@
-// server/src/models/RaceResult.js
 import mongoose from 'mongoose';
 const { Schema, model } = mongoose;
 
-/**
- * RaceResult records a saved race.
- * - user: optional ObjectId reference to User
- * - passage: optional reference to the Passage used
- * - wpm: words per minute (number)
- * - accuracy: percentage 0-100
- * - charsTyped: characters typed during the run
- * - durationMs: duration of the race in milliseconds (used to recalc if needed)
- * - createdAt: timestamp
- */
-const raceResultSchema = new Schema({
-  user: { type: Schema.Types.ObjectId, ref: 'User', required: false },
-  passage: { type: Schema.Types.ObjectId, ref: 'Passage', required: false },
-  wpm: { type: Number, required: true },
-  accuracy: { type: Number, required: true },
-  charsTyped: { type: Number, default: 0 },
-  durationMs: { type: Number, required: true },
-  createdAt: { type: Date, default: () => new Date() }
-});
+const raceResultSchema = new Schema(
+  {
+    user: {
+      type: Schema.Types.ObjectId,
+      ref: 'User',
+      required: false,
+      index: true
+    },
+    passage: {
+      type: Schema.Types.ObjectId,
+      ref: 'Passage',
+      required: false
+    },
+    wpm: {
+      type: Number,
+      required: true,
+      min: 0,
+      max: 400
+    },
+    accuracy: {
+      type: Number,
+      required: true,
+      min: 0,
+      max: 100
+    },
+    charsTyped: {
+      type: Number,
+      default: 0,
+      min: 0
+    },
+    durationMs: {
+      type: Number,
+      required: true,
+      min: 0
+    },
+    rank: {
+      type: Number,
+      default: 1,
+      min: 1
+    },
+    isWinner: {
+      type: Boolean,
+      default: false
+    }
+  },
+  {
+    timestamps: true
+  }
+);
+
+// Compound index for fast user race history lookup sorted by newest first
+raceResultSchema.index({ user: 1, createdAt: -1 });
 
 export default model('RaceResult', raceResultSchema);
