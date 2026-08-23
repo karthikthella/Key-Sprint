@@ -178,7 +178,10 @@ export default function ProfilePage({ onOpenAuth }) {
     setUpdatingTeam(true);
 
     try {
-      soundEngine.playRaceStart();
+      try {
+        soundEngine.playKeyClick();
+      } catch (e) {}
+
       const res = await axios.patch(
         'http://localhost:5000/api/users/profile',
         { avatar: pendingTeam.id },
@@ -909,34 +912,41 @@ export default function ProfilePage({ onOpenAuth }) {
       {/* ========================================================================= */}
       <AnimatePresence>
         {pendingTeam && (
-          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/85 p-4 backdrop-blur-md">
+          <div
+            onClick={() => setPendingTeam(null)}
+            className="fixed inset-0 z-50 flex items-center justify-center bg-black/85 p-4 backdrop-blur-md cursor-pointer"
+          >
             <motion.div
-              initial={{ scale: 0.9, opacity: 0 }}
+              onClick={(e) => e.stopPropagation()}
+              initial={{ scale: 0.92, opacity: 0 }}
               animate={{ scale: 1, opacity: 1 }}
-              exit={{ scale: 0.9, opacity: 0 }}
-              className="relative w-full max-w-lg overflow-hidden rounded-2xl border border-[#353750] bg-[#0f101a] p-6 shadow-[0_0_50px_rgba(0,0,0,0.9)]"
+              exit={{ scale: 0.92, opacity: 0 }}
+              className="relative z-10 w-full max-w-lg overflow-hidden rounded-2xl border border-[#353750] bg-[#0f101a] p-6 shadow-[0_0_50px_rgba(0,0,0,0.9)] cursor-default"
             >
               {/* Header Livery Glow */}
               <div
-                className="absolute -right-16 -top-16 h-48 w-48 rounded-full opacity-30 blur-2xl"
+                className="pointer-events-none absolute -right-16 -top-16 h-48 w-48 rounded-full opacity-30 blur-2xl"
                 style={{ backgroundColor: pendingTeam.primaryColor }}
               />
 
-              {/* Close Button */}
-              <button
-                onClick={() => setPendingTeam(null)}
-                className="absolute right-4 top-4 rounded-lg p-1.5 text-zinc-400 hover:bg-[#1f202e] hover:text-white"
-              >
-                <X className="h-5 w-5" />
-              </button>
-
-              <div className="relative z-10 flex flex-col gap-4">
-                {/* Modal Title */}
-                <div className="flex items-center gap-2 font-telemetry text-xs font-bold uppercase text-[#00d2be]">
-                  <FileText className="h-4 w-4" />
-                  <span>2026 FIA DRIVER TRANSFER CONTRACT</span>
+              <div className="relative z-20 flex flex-col gap-4">
+                {/* Modal Title Bar with Close Button */}
+                <div className="flex items-center justify-between border-b border-[#20212f] pb-3">
+                  <div className="flex items-center gap-2 font-telemetry text-xs font-bold uppercase text-[#00d2be]">
+                    <FileText className="h-4 w-4" />
+                    <span>2026 FIA DRIVER TRANSFER CONTRACT</span>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => setPendingTeam(null)}
+                    className="flex h-8 w-8 items-center justify-center rounded-full border border-[#35374d] bg-[#181928] text-zinc-400 hover:border-[#e10600] hover:bg-[#e10600] hover:text-white transition-all cursor-pointer shadow-md"
+                    aria-label="Close transfer contract"
+                  >
+                    <X className="h-4 w-4" />
+                  </button>
                 </div>
 
+                {/* Team Info */}
                 <div className="flex items-center gap-4 border-b border-[#20212f] pb-4">
                   <div
                     className="flex h-14 w-14 shrink-0 items-center justify-center rounded-2xl font-f1 text-xl font-black text-white shadow-xl"
@@ -961,17 +971,19 @@ export default function ProfilePage({ onOpenAuth }) {
                 </div>
 
                 {/* Modal Actions */}
-                <div className="mt-2 flex items-center justify-end gap-3">
+                <div className="mt-2 flex items-center justify-end gap-3 pt-2">
                   <button
+                    type="button"
                     onClick={() => setPendingTeam(null)}
-                    className="rounded-xl border border-[#2a2c3d] px-4 py-2.5 font-telemetry text-xs font-bold text-zinc-400 transition-colors hover:text-white"
+                    className="rounded-xl border border-[#2a2c3d] bg-[#141522] px-4 py-2.5 font-telemetry text-xs font-bold text-zinc-400 transition-colors hover:border-zinc-500 hover:text-white cursor-pointer"
                   >
                     CANCEL
                   </button>
                   <button
+                    type="button"
                     onClick={handleConfirmContractSigning}
                     disabled={updatingTeam}
-                    className="flex items-center gap-2 rounded-xl bg-[#00d2be] px-6 py-2.5 font-f1 text-xs tracking-wider text-black font-bold shadow-[0_0_20px_rgba(0,210,190,0.4)] transition-transform hover:scale-105"
+                    className="flex items-center gap-2 rounded-xl bg-[#00d2be] px-6 py-2.5 font-f1 text-xs tracking-wider text-black font-bold shadow-[0_0_20px_rgba(0,210,190,0.4)] transition-transform hover:scale-105 cursor-pointer disabled:opacity-50"
                   >
                     <Check className="h-4 w-4" />
                     <span>{updatingTeam ? 'SIGNING CONTRACT...' : 'CONFIRM & SIGN CONTRACT'}</span>
