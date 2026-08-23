@@ -126,16 +126,23 @@ export class RoomManager {
       const validWpm = Math.max(0, Math.min(400, Math.round(player.wpm || 0)));
       const validAccuracy = Math.max(0, Math.min(100, Math.round(player.accuracy ?? 100)));
       const isWinner = rank === 1;
+      const mode = room.isBotRoom ? 'practice' : 'multiplayer';
+      const pointsTable = [25, 18, 15, 12, 10, 8, 6, 4, 2, 1];
+      const pointsAwarded = mode === 'multiplayer' && rank <= pointsTable.length ? pointsTable[rank - 1] : 0;
+      const isCleanLap = validAccuracy === 100;
 
       const rr = new RaceResult({
         user: player.userId,
         passage: room.passageId || null,
+        mode,
         wpm: validWpm,
         accuracy: validAccuracy,
         charsTyped,
         durationMs,
         rank,
-        isWinner
+        isWinner,
+        pointsAwarded,
+        isCleanLap
       });
 
       await rr.save();
@@ -146,7 +153,11 @@ export class RoomManager {
           wpm: validWpm,
           accuracy: validAccuracy,
           durationMs,
-          isWinner
+          charsTyped,
+          isWinner,
+          rank,
+          mode,
+          pointsAwarded
         });
       }
     } catch (err) {

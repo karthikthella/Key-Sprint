@@ -14,6 +14,12 @@ const raceResultSchema = new Schema(
       ref: 'Passage',
       required: false
     },
+    mode: {
+      type: String,
+      enum: ['multiplayer', 'practice'],
+      default: 'multiplayer',
+      index: true
+    },
     wpm: {
       type: Number,
       required: true,
@@ -44,6 +50,14 @@ const raceResultSchema = new Schema(
     isWinner: {
       type: Boolean,
       default: false
+    },
+    pointsAwarded: {
+      type: Number,
+      default: 0
+    },
+    isCleanLap: {
+      type: Boolean,
+      default: false
     }
   },
   {
@@ -53,5 +67,6 @@ const raceResultSchema = new Schema(
 
 // Compound index for fast user race history lookup sorted by newest first
 raceResultSchema.index({ user: 1, createdAt: -1 });
+raceResultSchema.index({ user: 1, mode: 1, createdAt: -1 });
 
 export default model('RaceResult', raceResultSchema);

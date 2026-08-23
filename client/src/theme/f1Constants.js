@@ -84,15 +84,25 @@ export const F1_TEAMS = {
     textColor: '#FFFFFF',
     code: 'RBF'
   },
-  sauber: {
-    id: 'sauber',
-    name: 'Stake F1 Team Kick Sauber',
-    shortName: 'Kick Sauber',
-    primaryColor: '#52E252',
-    secondaryColor: '#000000',
-    accentColor: '#1B1B1B',
+  audi: {
+    id: 'audi',
+    name: 'Audi F1 Team',
+    shortName: 'Audi Works',
+    primaryColor: '#F1001E',
+    secondaryColor: '#C0C0C0',
+    accentColor: '#1A1A1A',
+    textColor: '#FFFFFF',
+    code: 'AUD'
+  },
+  cadillac: {
+    id: 'cadillac',
+    name: 'Cadillac Formula 1 Team',
+    shortName: 'Cadillac',
+    primaryColor: '#D4AF37',
+    secondaryColor: '#111111',
+    accentColor: '#800020',
     textColor: '#000000',
-    code: 'SAU'
+    code: 'CAD'
   },
   haas: {
     id: 'haas',

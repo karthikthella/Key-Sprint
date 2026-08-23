@@ -171,7 +171,7 @@ export default function F1TypingArena({
     const nextIndex = typedText.length;
     const expectedChar = passageText[nextIndex];
 
-    // If an uncorrected typo is already present, lock cursor and record error penalty
+    // If an uncorrected typo is already present, lock cursor and record error
     if (currentError) {
       soundEngine.playErrorBeep();
       const newTotalErrors = totalErrors + 1;
