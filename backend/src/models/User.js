@@ -12,12 +12,45 @@ const userSchema = new Schema(
       maxlength: 30,
       index: true
     },
+    firstName: {
+      type: String,
+      trim: true,
+      default: ''
+    },
+    lastName: {
+      type: String,
+      trim: true,
+      default: ''
+    },
     email: {
       type: String,
       required: false,
       lowercase: true,
       trim: true,
-      sparse: true
+      sparse: true,
+      index: true
+    },
+    isEmailVerified: {
+      type: Boolean,
+      default: false
+    },
+    emailOtp: {
+      type: String,
+      default: null
+    },
+    emailOtpExpires: {
+      type: Date,
+      default: null
+    },
+    googleId: {
+      type: String,
+      sparse: true,
+      index: true
+    },
+    authProvider: {
+      type: String,
+      enum: ['local', 'google'],
+      default: 'local'
     },
     passwordHash: {
       type: String,
@@ -72,6 +105,14 @@ const userSchema = new Schema(
       type: Number,
       default: () => Math.floor(2 + Math.random() * 97)
     },
+    registrationIndex: {
+      type: Number,
+      default: 1
+    },
+    onboardingComplete: {
+      type: Boolean,
+      default: false
+    },
     // Official Multiplayer Grand Prix Statistics
     gpStats: {
       racesCount: { type: Number, default: 0 },
@@ -91,6 +132,8 @@ const userSchema = new Schema(
     toJSON: {
       transform: (doc, ret) => {
         delete ret.passwordHash;
+        delete ret.emailOtp;
+        delete ret.emailOtpExpires;
         delete ret.__v;
         return ret;
       }

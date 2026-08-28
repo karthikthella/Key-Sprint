@@ -344,8 +344,12 @@ export async function buildTelemetryAnalytics(userId, user) {
     user: {
       id: user._id || user.id,
       username: user.username,
+      firstName: user.firstName || '',
+      lastName: user.lastName || '',
       email: user.email,
-      driverNumber: user.driverNumber || 1,
+      driverNumber: user.driverNumber || 44,
+      registrationIndex: user.registrationIndex || 1,
+      onboardingComplete: user.onboardingComplete ?? true,
       bestWPM: user.bestWPM || 0,
       avgWPM: user.avgWPM || 0,
       avgAccuracy: user.avgAccuracy || 100,
@@ -358,7 +362,7 @@ export async function buildTelemetryAnalytics(userId, user) {
       title: tier.title,
       color: tier.color,
       description: tier.description,
-      licenseNumber: `FIA-${user._id?.toString().slice(-6).toUpperCase() || '2026'}`
+      licenseNumber: `FIA-PASS #${String(user.registrationIndex || 1).padStart(4, '0')}`
     },
     contract: {
       team: selectedTeam,
