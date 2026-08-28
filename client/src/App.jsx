@@ -48,14 +48,20 @@ function MainApp() {
   );
 }
 
+import { GoogleOAuthProvider } from '@react-oauth/google';
+
+const GOOGLE_CLIENT_ID = import.meta.env.VITE_GOOGLE_CLIENT_ID || '1029384756-keysprint-f1.apps.googleusercontent.com';
+
 export default function App() {
   return (
-    <AuthProvider>
-      <SocketProvider>
-        <BrowserRouter>
-          <MainApp />
-        </BrowserRouter>
-      </SocketProvider>
-    </AuthProvider>
+    <GoogleOAuthProvider clientId={GOOGLE_CLIENT_ID}>
+      <AuthProvider>
+        <SocketProvider>
+          <BrowserRouter>
+            <MainApp />
+          </BrowserRouter>
+        </SocketProvider>
+      </AuthProvider>
+    </GoogleOAuthProvider>
   );
 }

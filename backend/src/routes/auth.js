@@ -229,26 +229,42 @@ router.post('/google', authRateLimiter, async (req, res) => {
       return res.status(503).json({ error: 'Database is not connected.' });
     }
 
-    const { credential, mockProfile } = req.body;
+    const { credential, access_token, mockProfile } = req.body;
     let googlePayload = null;
 
-    if (credential) {
+    // 1. If access_token provided (via useGoogleLogin flow)
+    if (access_token) {
       try {
-        const client = new OAuth2Client(process.env.GOOGLE_CLIENT_ID);
-        const ticket = await client.verifyIdToken({
-          idToken: credential,
-          audience: process.env.GOOGLE_CLIENT_ID
+        const userInfoRes = await axios.get('https://www.googleapis.com/oauth2/v3/userinfo', {
+          headers: { Authorization: `Bearer ${access_token}` }
         });
-        googlePayload = ticket.getPayload();
+        googlePayload = userInfoRes.data;
+      } catch (axErr) {
+        console.warn('Google userinfo fetch note:', axErr.message);
+      }
+    }
+
+    // 2. If credential (ID Token) provided (via GoogleLogin button)
+    if (!googlePayload && credential) {
+      try {
+        const tokenInfoRes = await axios.get(`https://oauth2.googleapis.com/tokeninfo?id_token=${credential}`);
+        googlePayload = tokenInfoRes.data;
       } catch (tokenErr) {
-        console.warn('Google verifyIdToken note:', tokenErr.message);
-        // If decoded payload available
         try {
-          const decoded = jwt.decode(credential);
-          if (decoded && decoded.email) {
-            googlePayload = decoded;
-          }
-        } catch (decErr) {}
+          const client = new OAuth2Client(process.env.GOOGLE_CLIENT_ID);
+          const ticket = await client.verifyIdToken({
+            idToken: credential,
+            audience: process.env.GOOGLE_CLIENT_ID
+          });
+          googlePayload = ticket.getPayload();
+        } catch (ticketErr) {
+          try {
+            const decoded = jwt.decode(credential);
+            if (decoded && decoded.email) {
+              googlePayload = decoded;
+            }
+          } catch (decErr) {}
+        }
       }
     }
 

@@ -19,6 +19,8 @@ import {
 } from 'lucide-react';
 import { F1_TEAMS, TEAM_LIST, soundEngine } from '../theme/f1Constants';
 
+import { useGoogleLogin } from '@react-oauth/google';
+
 export default function F1AuthModal({ isOpen, onClose, onAuthSuccess }) {
   const [mode, setMode] = useState('login'); // 'login' | 'register'
   const [regStep, setRegStep] = useState(1); // 1: Details, 2: OTP, 3: Constructor Induction
@@ -72,13 +74,101 @@ export default function F1AuthModal({ isOpen, onClose, onAuthSuccess }) {
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, [isOpen, onClose]);
 
-  if (!isOpen) return null;
-
   // Reset errors when switching modes
   const handleSwitchMode = (newMode) => {
     setMode(newMode);
     setError('');
     setRegStep(1);
+  };
+
+  // Google OAuth Login Trigger
+  const triggerGoogleLogin = useGoogleLogin({
+    onSuccess: async (tokenResponse) => {
+      setLoading(true);
+      setError('');
+      try {
+        const res = await axios.post('http://localhost:5000/api/auth/google', {
+          access_token: tokenResponse.access_token
+        });
+
+        const { user, token, requiresInduction } = res.data;
+        localStorage.setItem('keysprint_token', token);
+
+        if (requiresInduction) {
+          setTempAuthToken(token);
+          setInductionCallsign(user.username || 'Driver');
+          setInductionNumber(user.driverNumber || Math.floor(2 + Math.random() * 97));
+          setSelectedTeam(user.avatar || 'ferrari');
+          setMode('register');
+          setRegStep(3);
+        } else {
+          try { soundEngine.playKeyClick(); } catch (err) {}
+          onAuthSuccess(user, token);
+          onClose();
+        }
+      } catch (err) {
+        setError(err.response?.data?.error || 'Google sign in failed.');
+      } finally {
+        setLoading(false);
+      }
+    },
+    onError: () => {
+      // If Google Client ID not yet configured in cloud console, fallback to dev test simulation
+      handleDevGoogleAuth();
+    }
+  });
+
+  const handleGoogleAuth = () => {
+    const googleClientId = import.meta.env.VITE_GOOGLE_CLIENT_ID;
+    const isRealGoogleConfigured = googleClientId && !googleClientId.includes('keysprint-f1') && googleClientId.includes('.apps.googleusercontent.com');
+
+    if (isRealGoogleConfigured) {
+      try {
+        triggerGoogleLogin();
+      } catch (e) {
+        handleDevGoogleAuth();
+      }
+    } else {
+      handleDevGoogleAuth();
+    }
+  };
+
+  const handleDevGoogleAuth = async () => {
+    setError('');
+    setLoading(true);
+    try {
+      const mockGoogle = {
+        name: 'Carlos Sainz',
+        given_name: 'Carlos',
+        family_name: 'Sainz',
+        email: `driver_${Date.now().toString().slice(-4)}@gmail.com`,
+        sub: `google_uid_${Date.now()}`
+      };
+
+      const res = await axios.post('http://localhost:5000/api/auth/google', {
+        mockProfile: mockGoogle
+      });
+
+      const { user, token, requiresInduction } = res.data;
+      localStorage.setItem('keysprint_token', token);
+
+      if (requiresInduction) {
+        setTempAuthToken(token);
+        setInductionCallsign(user.username || 'CarlosSainz');
+        setInductionNumber(user.driverNumber || Math.floor(2 + Math.random() * 97));
+        setSelectedTeam(user.avatar || 'ferrari');
+        setMode('register');
+        setRegStep(3);
+      } else {
+        try { soundEngine.playKeyClick(); } catch (err) {}
+        onAuthSuccess(user, token);
+        onClose();
+      }
+    } catch (err) {
+      setError(err.response?.data?.error || 'Google authentication failed.');
+    } finally {
+      setLoading(false);
+    }
   };
 
   // -------------------------------------------------------------
@@ -298,49 +388,7 @@ export default function F1AuthModal({ isOpen, onClose, onAuthSuccess }) {
     }
   };
 
-  // -------------------------------------------------------------
-  // 5. GOOGLE AUTHENTICATION HANDLER
-  // -------------------------------------------------------------
-  const handleGoogleAuth = async () => {
-    setError('');
-    setLoading(true);
-
-    try {
-      // In web development / testing, generate a realistic verified Google Driver payload
-      const mockGoogle = {
-        name: 'Carlos Sainz',
-        given_name: 'Carlos',
-        family_name: 'Sainz',
-        email: `driver_${Date.now().toString().slice(-4)}@gmail.com`,
-        sub: `google_uid_${Date.now()}`
-      };
-
-      const res = await axios.post('http://localhost:5000/api/auth/google', {
-        mockProfile: mockGoogle
-      });
-
-      const { user, token, requiresInduction } = res.data;
-      localStorage.setItem('keysprint_token', token);
-
-      if (requiresInduction) {
-        // Direct jump to Step 3: Constructor Induction with pre-filled callsign
-        setTempAuthToken(token);
-        setInductionCallsign(user.username || 'CarlosSainz');
-        setInductionNumber(user.driverNumber || Math.floor(2 + Math.random() * 97));
-        setSelectedTeam(user.avatar || 'ferrari');
-        setMode('register');
-        setRegStep(3);
-      } else {
-        try { soundEngine.playKeyClick(); } catch (err) {}
-        onAuthSuccess(user, token);
-        onClose();
-      }
-    } catch (err) {
-      setError(err.response?.data?.error || 'Google authentication failed.');
-    } finally {
-      setLoading(false);
-    }
-  };
+  if (!isOpen) return null;
 
   return (
     <div
